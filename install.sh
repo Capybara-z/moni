@@ -16,6 +16,8 @@ if [[ "$MONITOR_PORT" != "7443" && "$MONITOR_PORT" != "8443" ]]; then
   MONITOR_PORT=8443
 fi
 
+read -p "Введите доменное имя бота (например, example.com): " DOMAIN_BOT < /dev/tty
+
 read -p "Введите путь вебхука бота (например fTCdrLBwRr): " WEBHOOK_PATH < /dev/tty
 WEBHOOK_PATH="${WEBHOOK_PATH##/}"
 WEBHOOK_PATH="${WEBHOOK_PATH%%/}"
@@ -33,7 +35,8 @@ curl -sL "https://raw.githubusercontent.com/Capybara-z/moni/refs/heads/main/file
 curl -sL "https://raw.githubusercontent.com/Capybara-z/moni/refs/heads/main/files/moni.py" \
      -o /root/moni/moni.py
 
-sed -i "s|__WEBHOOK_PATH__|/${WEBHOOK_PATH}|g" /root/moni/moni.py
+sed -i "s|__WEBHOOK_PATH__|${WEBHOOK_PATH}|g" /root/moni/moni.py
+sed -i "s|__DOMAIN_BOT__|$DOMAIN_BOT|g" /root/moni/moni.py
 
 NGINX_CONFIG="/etc/nginx/sites-available/monitoring.conf"
 cat > "$NGINX_CONFIG" <<EOF
