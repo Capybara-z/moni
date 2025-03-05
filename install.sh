@@ -1,5 +1,5 @@
 #!/bin/bash
-# Скрипт для установки и настройки мониторинга с nginx, веб‑страницей и Flask‑демоном
+# Скрипт для установки и настройки мониторинга.
 
 # Проверка, что скрипт запущен от root
 if [ "$EUID" -ne 0 ]; then
@@ -8,12 +8,17 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "===== Шаг 1. Настройка параметров ====="
-read -p "Введите доменное имя (например, example.com): " DOMAIN
+read -p "Введите доменное имя сервера (например, example.com): " DOMAIN
 read -p "Введите порт для мониторинга (7443 или 8443): " MONITOR_PORT
 if [[ "$MONITOR_PORT" != "7443" && "$MONITOR_PORT" != "8443" ]]; then
-  echo "Неверный порт. Будет использован порт 7443 по умолчанию."
-  MONITOR_PORT=7443
+  echo "Неверный порт. Будет использован порт 8443 по умолчанию."
+  MONITOR_PORT=8443
 fi
+
+read -p "Введите путь вебхука бота (например fTCdrLBwRr): " WEBHOOK_PATH
+# Уберём начальный /, если пользователь случайно ввёл его
+WEBHOOK_PATH="${WEBHOOK_PATH##/}"
+WEBHOOK_PATH="${WEBHOOK_PATH%%/}"
 
 echo "===== Шаг 2. Установка nginx и создание конфига ====="
 # Если nginx не установлен – установить его
@@ -27,7 +32,6 @@ cat > "$NGINX_CONFIG" <<EOF
 server {
     listen 80;
     server_name ${DOMAIN};
-    # Перенаправление HTTP -> HTTPS
     return 301 https://\$host\$request_uri;
 }
 
@@ -45,7 +49,6 @@ server {
     ssl_session_timeout 1d;
     ssl_session_tickets off;
 
-    # Настройки Proxy Protocol
     real_ip_header proxy_protocol;
     set_real_ip_from 127.0.0.1;
     set_real_ip_from ::1;
@@ -56,9 +59,8 @@ server {
     location / {
         try_files \$uri \$uri/ =404;
     }
-    
-    # Обработка запросов для reverse proxy
-    location /QuMWTCilYRBkhfS/ {
+
+    location /${WEBHOOK_PATH}/ {
         proxy_pass http://localhost:61016;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -377,7 +379,7 @@ EOF
 
 echo "===== Шаг 4. Создание папки /root/moni и файла moni.py ====="
 mkdir -p /root/moni
-cat > /root/moni/moni.py <<'EOF'
+cat > /root/moni/moni.py <<EOF
 from flask import Flask, request, jsonify
 import psutil
 import requests
@@ -392,7 +394,7 @@ from collections import deque
 from logging.handlers import TimedRotatingFileHandler
 
 BASE_URL = "https://monitiring.capybara-z.ru"
-WEBHOOK_PATH = "/QuMWTCilYRBkhfS"
+WEBHOOK_PATH = "/${WEBHOOK_PATH}"
 LOG_DIR = "logs"
 
 PROCESS_DATA_MAXLEN = 1 # Хранение в памяти результатов 
