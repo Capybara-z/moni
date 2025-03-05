@@ -111,5 +111,5 @@ systemctl daemon-reload
 systemctl enable moni.service
 systemctl start moni.service
 
+sudo systemctl status moni.service --no-pager
 echo "===== Установка завершена ====="
-echo "sudo systemctl status moni.service"
