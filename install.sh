@@ -1,5 +1,9 @@
 #!/bin/bash
-# Скрипт для установки и настройки мониторинга.
+# Скрипт для установки и настройки мониторинга с nginx, веб‑страницей и Flask‑демоном
+# Учитывает:
+#  - Вопросы о домене, порте, пути вебхука.
+#  - Удаление ведущих и конечных слэшей из вебхука.
+#  - Отключение интерактивного окна при установке iperf3 (выбор No).
 
 # Проверка, что скрипт запущен от root
 if [ "$EUID" -ne 0 ]; then
@@ -7,23 +11,30 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# Чтобы при установке iperf3 не было интерактивного окна:
+export DEBIAN_FRONTEND=noninteractive
+echo "iperf3 iperf3/daemon boolean false" | debconf-set-selections
+
 echo "===== Шаг 1. Настройка параметров ====="
-read -p "Введите доменное имя сервера (например, example.com): " DOMAIN
-read -p "Введите порт для мониторинга (7443 или 8443): " MONITOR_PORT
+read -p "Введите доменное имя (например, example.com): " DOMAIN < /dev/tty
+
+read -p "Введите порт для мониторинга (7443 или 8443): " MONITOR_PORT < /dev/tty
 if [[ "$MONITOR_PORT" != "7443" && "$MONITOR_PORT" != "8443" ]]; then
   echo "Неверный порт. Будет использован порт 8443 по умолчанию."
   MONITOR_PORT=8443
 fi
 
-read -p "Введите путь вебхука бота (например fTCdrLBwRr): " WEBHOOK_PATH
-# Уберём начальный /, если пользователь случайно ввёл его
+read -p "Введите путь вебхука бота (например fTCdrLBwRr): " WEBHOOK_PATH < /dev/tty
+# Уберём все ведущие и конечные слэши
 WEBHOOK_PATH="${WEBHOOK_PATH##/}"
 WEBHOOK_PATH="${WEBHOOK_PATH%%/}"
 
 echo "===== Шаг 2. Установка nginx и создание конфига ====="
+apt update -y
+
 # Если nginx не установлен – установить его
 if ! command -v nginx >/dev/null 2>&1; then
-  apt update && apt install nginx -y
+  apt install nginx -y
 fi
 
 # Создаём конфигурационный файл для nginx
@@ -32,6 +43,7 @@ cat > "$NGINX_CONFIG" <<EOF
 server {
     listen 80;
     server_name ${DOMAIN};
+    # Перенаправление HTTP -> HTTPS
     return 301 https://\$host\$request_uri;
 }
 
@@ -49,6 +61,7 @@ server {
     ssl_session_timeout 1d;
     ssl_session_tickets off;
 
+    # Настройки Proxy Protocol
     real_ip_header proxy_protocol;
     set_real_ip_from 127.0.0.1;
     set_real_ip_from ::1;
@@ -59,7 +72,8 @@ server {
     location / {
         try_files \$uri \$uri/ =404;
     }
-
+    
+    # Обработка запросов для reverse proxy
     location /${WEBHOOK_PATH}/ {
         proxy_pass http://localhost:61016;
         proxy_set_header Host \$host;
@@ -105,6 +119,7 @@ cat > /var/www/site/index.html <<'EOF'
 		}
 	</style>
 	<script type="text/javascript">
+		/* Ваш HTML/JS код */
 		var context, canvasWidth, canvasHeight;
 		var mouseX = -1, mouseY = -1, mouseDown = false;
 		var shape=[], numShapes = 0, colourAngle = 0, leadShape = null;
@@ -305,7 +320,7 @@ cat > /var/www/site/index.html <<'EOF'
 					n--;
 					numShapes--;
 				}else{
-					shape[n].opacity *= shrinkRate;
+					shape[n].opacity *= 0.98;
 					shape[n].draw();
 				}
 			}
@@ -472,6 +487,7 @@ def get_system_info() -> dict:
 
 def collect_process_data() -> None:
     while True:
+        # Сбросим счётчики cpu_percent, чтобы при следующем запросе получить корректные данные
         for proc in psutil.process_iter(['name']):
             try:
                 proc.cpu_percent(interval=None)
@@ -649,11 +665,11 @@ if __name__ == "__main__":
 EOF
 
 echo "===== Шаг 5. Установка необходимых пакетов ====="
-apt update
-apt install python3-pip -y
-apt remove python3-blinker -y
+apt remove python3-blinker -y || true
+apt install python3-pip mtr -y
+
+# iperf3 уже будет установлен без интерактива, т.к. мы задали debconf выше
 apt install iperf3 -y
-apt install mtr -y
 
 pip3 install Flask psutil requests --break-system-packages
 
@@ -678,6 +694,6 @@ systemctl daemon-reload
 systemctl enable moni.service
 systemctl start moni.service
 
-echo "===== Всё готово ====="
+echo "===== Установка завершена ====="
 echo "Проверьте статус демона командой:"
 echo "sudo systemctl status moni.service"
