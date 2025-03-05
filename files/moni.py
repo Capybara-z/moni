@@ -11,7 +11,7 @@ import json
 from collections import deque
 from logging.handlers import TimedRotatingFileHandler
 
-BASE_URL = "https://monitiring.capybara-z.ru"
+BASE_URL = "https://__DOMAIN_BOT__"
 WEBHOOK_PATH = "/__WEBHOOK_PATH__"
 LOG_DIR = "logs"
 
