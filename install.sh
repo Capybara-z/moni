@@ -44,15 +44,13 @@ server {
     listen 80;
     server_name ${DOMAIN};
 
-    if ($host = ${DOMAIN}) {
-        return 301 https://$host$request_uri;
-    } 
-
-    return 404;
+    return 301 https://${DOMAIN}$request_uri;
 }
 
 server {
     listen 127.0.0.1:${MONITOR_PORT} ssl http2 proxy_protocol;
+    listen ${MONITOR_PORT} ssl http2;
+
     server_name ${DOMAIN};
 
     ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
@@ -60,7 +58,8 @@ server {
 
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
-    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:...:ECDHE-RSA-CHACHA20-POLY1305';
+
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305';
     ssl_session_cache shared:SSL:1m;
     ssl_session_timeout 1d;
     ssl_session_tickets off;
@@ -73,15 +72,15 @@ server {
     index index.html;
 
     location / {
-        try_files \$uri \$uri/ =404;
+        try_files $uri $uri/ =404;
     }
 
     location /${WEBHOOK_PATH}/ {
         proxy_pass http://localhost:61016;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 EOF
