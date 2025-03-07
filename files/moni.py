@@ -52,7 +52,7 @@ def async_post(url: str, payload: dict, timeout: int = 10) -> None:
         try:
             requests.post(url, json=payload, timeout=timeout)
         except Exception as e:
-            logger.error(f"Ошибка при асинхронном POST на {url}: {e}")
+            logger.error(f"Ошибка POST запроса на {url}: {e}")
     threading.Thread(target=task, daemon=True).start()
 
 def get_my_ip() -> str:
@@ -146,7 +146,7 @@ def fetch_limits_on_startup() -> None:
         logger.info("Запрос лимитов с бота")
         payload = {"ip": MY_IP}
         async_post(f"{BASE_URL}{WEBHOOK_PATH}/get_limits", payload)
-        logger.info(f"Запрос лимитов отправлен асинхронно для IP {MY_IP}")
+        logger.info(f"Запрос лимитов отправлен для IP {MY_IP}")
         time.sleep(FETCH_LIMITS_INTERVAL)
 
 @app.route(f'{WEBHOOK_PATH}/<string:path>', methods=['POST'])
