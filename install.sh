@@ -18,9 +18,14 @@ fi
 
 read -p "Введите доменное имя бота (например, example.com): " DOMAIN_BOT < /dev/tty
 
-read -p "Введите путь вебхука бота (например fTCdrLBwRr): " WEBHOOK_PATH < /dev/tty
-WEBHOOK_PATH="${WEBHOOK_PATH##/}"
-WEBHOOK_PATH="${WEBHOOK_PATH%%/}"
+read -p "Введите путь вебхука бота (например, fTCdrLBwRr): " WEBHOOK_PATH < /dev/tty
+if [[ -z "$WEBHOOK_PATH" ]]; then
+    echo "Путь вебхука не может быть пустым."
+    exit 1
+fi
+
+WEBHOOK_PATH="${WEBHOOK_PATH#/}"
+WEBHOOK_PATH="${WEBHOOK_PATH%/}"
 
 apt update -y
 apt install -y nginx python3-pip mtr iperf3
@@ -44,7 +49,7 @@ server {
     listen 80;
     server_name ${DOMAIN};
 
-    return 301 https://${DOMAIN}$request_uri;
+    return 301 https://${DOMAIN}\$request_uri;
 }
 
 server {
@@ -72,15 +77,15 @@ server {
     index index.html;
 
     location / {
-        try_files $uri $uri/ =404;
+        try_files \$uri \$uri/ =404;
     }
 
     location /${WEBHOOK_PATH}/ {
         proxy_pass http://localhost:61016;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
