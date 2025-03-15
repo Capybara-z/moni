@@ -93,7 +93,7 @@ EOF
 ln -sf "$NGINX_CONFIG" /etc/nginx/sites-enabled/monitoring.conf
 nginx -t && systemctl reload nginx
 
-pip3 install Flask psutil requests --break-system-packages
+pip3 install Flask psutil requests aiohttp --break-system-packages
 
 cat > /etc/systemd/system/moni.service <<EOF
 [Unit]
